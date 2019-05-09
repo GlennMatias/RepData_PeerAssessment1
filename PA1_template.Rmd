@@ -1,25 +1,188 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: " Reproducible Research Project"
+author: "Glenn"
+date: "May 9, 2019"
+output: html_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## Introduction
+
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+The data for this assignment can be downloaded from the course web site:
+
+Dataset: Activity monitoring data https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip [52K]
+The variables included in this dataset are:
+
+steps: Number of steps taking in a 5-minute interval (missing values are coded as \color{red}{\verb|NA|}NA)  
+date: The date on which the measurement was taken in YYYY-MM-DD format  
+interval: Identifier for the 5-minute interval in which measurement was taken  
+  
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+Loading all the necessary libraries
+```{r, echo=TRUE}
+library("dplyr")
+library("ggplot2")
+library("lattice")
+```
+
+
+Extracting the dataset
+```{r, echo=TRUE}
+unzip(zipfile = "./repdata_data_activity.zip")
+```
+
+# Loading and preprocessing the data
+
+## 1. Load the data (i.e. read.csv())
+
+```{r, echo=TRUE}
+dataset = read.table("activity.csv", sep = ",", skip=1)
+```
+
+## 2. Perform occular inspection on the dataset if it has been imported correctly
+
+```{r, echo=TRUE}
+
+#View(dataset)
+```
+## 3. Set dataset column names
+```{r, echo=TRUE}
+colnames(dataset) = c("steps","date","interval")
+
+```
+
+
+## 4. Processing/transforming the data (if necessary) into a format suitable for the analysis
+
+```{r, echo=TRUE}
+datasetGroupedByDaySums = dataset %>% group_by(date) %>% summarise(Sum = sum(steps, na.rm=FALSE))
+```
+
+## 5. Plot the histogram
+```{r, echo=TRUE}
+hist(datasetGroupedByDaySums$Sum, xlab="Steps per day", ylab="Number of Days", main="Total steps per day")
+```
+
+
+## 6. Calculate and report the mean and median of the total number of steps taken per day
+
+```{r, echo=TRUE}
+meanOfStepsPerDay <- mean(datasetGroupedByDaySums$Sum, na.rm = TRUE)
+
+meanOfStepsPerDay = as.integer(meanOfStepsPerDay)
+```
+Mean: `r meanOfStepsPerDay`
+
+```{r medianOfStepsPerDay, echo=TRUE}
+medianOfStepsPerDay <- median(datasetGroupedByDaySums$Sum, na.rm = TRUE)
+```
+
+Median: `r medianOfStepsPerDay`
+
+
+# What is the average daily activity pattern?
+
+
+# 1. Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+
+```{r, echo=TRUE}
+datasetGroupedByIntervalMeans = dataset %>%  filter(!is.na(steps)) %>% group_by(interval) %>% summarise(Mean = mean(steps, na.rm=FALSE))
+```
+
+```{r, echo=TRUE}
+ggplot(datasetGroupedByIntervalMeans, aes(x=interval, y=Mean)) +
+    geom_line(color = "blue")
+```
+
+
+## 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r, echo=TRUE}
+display = head(arrange(datasetGroupedByIntervalMeans,desc(datasetGroupedByIntervalMeans$Mean)),1)
+
+display$interval
+```
+
+# Imputing missing values
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+# 1. Calulate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+
+```{r sumOfMissingValues, echo=TRUE}
+sum(is.na(dataset$steps))
+```
+
+Total number of missing values in the dataset: `r sum(is.na(dataset$steps))`
+
+## 2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.
+
+I will use the average of the whole dataset so that the plugged in values wont heavily impact the whole dataset 
+
+## 3. Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+```{r, echo=TRUE}
+filledInNADataset = dataset
+filledInNADataset$steps[is.na(filledInNADataset$steps)] <- mean(filledInNADataset$steps, na.rm=TRUE)
+```
+
+## 4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+
+### Total number of steps taken each day with NA:
+```{r, echo=TRUE}
+datasetGroupedByDaySums = dataset %>% group_by(date) %>% summarise(Sum = sum(steps, na.rm=FALSE))
+hist(datasetGroupedByDaySums$Sum, xlab="Steps per day", ylab="Number of Days", main="Total steps per day")
+```
+
+### Total number of steps taken each day without NA:
+```{r, echo=TRUE}
+datasetWithoutNAGroupedByDaySums = filledInNADataset %>% group_by(date) %>% summarise(Sum = sum(steps, na.rm=FALSE))
+hist(datasetWithoutNAGroupedByDaySums$Sum, xlab="Steps per day", ylab="Number of Days", main="Total steps per day")
+```
+```{r, echo=TRUE}
+mean(datasetGroupedByDaySums$Sum, na.rm = TRUE)
+median(datasetGroupedByDaySums$Sum, na.rm = TRUE)
+
+mean(datasetWithoutNAGroupedByDaySums$Sum)
+median(datasetWithoutNAGroupedByDaySums$Sum)
+
+```
+
+Since we only used the average of the dataset to fill in the missing values, we did not see a major change to the mean, median, and the shape of distribution of the new dataset without NA.
 
 
 
-## What is mean total number of steps taken per day?
+# Are there differences in activity patterns between weekdays and weekends?
+For this part the function may be of some help here. Use the dataset with the filled-in missing values for this part.
 
 
+## 1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
 
-## What is the average daily activity pattern?
+```{r, echo=TRUE}
+filledInNADataset$weekdayname = weekdays(as.POSIXlt(dataset$date))
+
+filledInNADataset$weekdayname[filledInNADataset$weekdayname=="Saturday" | filledInNADataset$weekdayname=="Sunday"] = "weekend"
+filledInNADataset$weekdayname[filledInNADataset$weekdayname!="weekend"] = "weekday"
+
+```
+## 2. Make a panel plot containing a time series plot (i.e. type="l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
 
 
+```{r, echo=TRUE}
+plotNewDataframe <- aggregate(steps ~ weekdayname+interval, data=filledInNADataset, FUN=mean)
 
-## Imputing missing values
+xyplot(steps ~ interval | factor(weekdayname),
+       layout = c(1, 2),
+       xlab="Interval",
+       ylab="Number of steps",
+       type="l",
+       lty=1,
+       data=plotNewDataframe)
 
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+```
